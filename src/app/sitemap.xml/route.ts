@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/api/prisma';
 import { SITE } from '@/lib/constants';
 
+// Force dynamic — this route queries the DB and cannot be statically pre-rendered
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || SITE.url || 'https://noithatlumi.vn';
 
@@ -11,12 +14,21 @@ export async function GET() {
     { path: '/login', priority: '0.3', changefreq: 'monthly' },
   ];
 
-  // Dynamic pages from DB
-  const [projects, towers, apartments] = await Promise.all([
-    prisma.project.findMany({ select: { slug: true, updatedAt: true } }),
-    prisma.tower.findMany({ select: { slug: true, updatedAt: true } }),
-    prisma.apartment.findMany({ select: { slug: true, updatedAt: true } }),
-  ]);
+  // Dynamic pages from DB — gracefully fall back to static-only if DB isn't available
+  let projects: { slug: string; updatedAt: Date }[] = [];
+  let towers: { slug: string; updatedAt: Date }[] = [];
+  let apartments: { slug: string; updatedAt: Date }[] = [];
+
+  try {
+    [projects, towers, apartments] = await Promise.all([
+      prisma.project.findMany({ select: { slug: true, updatedAt: true } }),
+      prisma.tower.findMany({ select: { slug: true, updatedAt: true } }),
+      prisma.apartment.findMany({ select: { slug: true, updatedAt: true } }),
+    ]);
+  } catch {
+    // DB not available (e.g., during build or migration), serve static-only sitemap
+    console.warn('DB not available for sitemap generation, serving static-only sitemap');
+  }
 
   const projectUrls = projects.map((p: { slug: string; updatedAt: Date }) => ({
     path: `/du-an/${p.slug}`,
