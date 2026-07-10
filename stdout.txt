@@ -1,0 +1,7 @@
+============================================
+  LUMI SATELLITE - DEPLOY TO RAILWAY
+============================================
+
+[STEP 1] GitHub CLI (gh) not found.
+  Download from: https://cli.github.com/
+Press any key to continue . . . 

@@ -1,0 +1,278 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ==================== CORE ENTITIES ====================
+
+model Project {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  name        String
+  shortDesc   String?
+  description String?
+  location    String?
+  developer   String?
+  status      String        @default("ACTIVE") // ACTIVE, COMING_SOON, COMPLETED, ARCHIVED
+  order       Int           @default(0)
+  thumbnail   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  towers      Tower[]
+  images      ProjectImage[]
+}
+
+model ProjectImage {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  order     Int      @default(0)
+  type      String   @default("GALLERY") // HERO, GALLERY, FLOORPLAN, MAP
+}
+
+model Tower {
+  id            String      @id @default(cuid())
+  slug          String      @unique
+  projectId     String
+  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  address       String?
+  floors        Int?
+  unitsPerFloor Int?
+  status        String      @default("ACTIVE") // ACTIVE, COMING_SOON, SOLD_OUT
+  order         Int         @default(0)
+  thumbnail     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  apartments    Apartment[]
+}
+
+model Apartment {
+  id            String           @id @default(cuid())
+  slug          String           @unique
+  towerId       String
+  tower         Tower            @relation(fields: [towerId], references: [id], onDelete: Cascade)
+  code          String
+  floor         Int?
+  unitNumber    String?
+  bedroomCount  Int              @default(2)
+  bathroomCount Int              @default(1)
+  area          Float?
+  direction     String?
+  layoutType    String?          // 1PN+, 2PN, 3PN, Studio, Duplex, Penhouse
+  status        String           @default("AVAILABLE") // AVAILABLE, RESERVED, SOLD, DESIGNING, CONSTRUCTING, COMPLETED, HIDDEN
+  priceEstimate Float?
+  description   String?
+  highlights    String           @default("[]") // JSON array
+  styleTags     String           @default("[]") // JSON array
+  floorPlanPdf  String?
+  floorPlanImg  String?
+  seoTitle      String?
+  seoDesc       String?
+  seoKeywords   String           @default("[]")
+  sourceType    String           @default("MANUAL") // MANUAL, ZALO_BOT, WP_SYNC, CSV_IMPORT
+  sourceId      String?
+  lastSyncedAt  DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  images        ApartmentImage[]
+  videos        ApartmentVideo[]
+  estimate      CostEstimate?
+}
+
+model ApartmentImage {
+  id           String    @id @default(cuid())
+  apartmentId  String
+  apartment    Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  url          String
+  alt          String?
+  roomType     String    @default("LIVING_ROOM") // LIVING_ROOM, KITCHEN, DINING, MASTER_BEDROOM, BEDROOM_2, BEDROOM_3, BATHROOM, BALCONY, HALLWAY, STORAGE, FLOORPLAN, EXTERIOR, DETAIL, OTHER
+  order        Int       @default(0)
+  isPrimary    Boolean   @default(false)
+  width        Int?
+  height       Int?
+  size         Int?
+  createdAt    DateTime  @default(now())
+}
+
+model ApartmentVideo {
+  id           String    @id @default(cuid())
+  apartmentId  String
+  apartment    Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  platform     String    // YOUTUBE, TIKTOK, FACEBOOK, INSTAGRAM, VIMEO
+  videoId      String?
+  url          String
+  title        String?
+  thumbnail    String?
+  duration     Int?
+  order        Int       @default(0)
+  createdAt    DateTime  @default(now())
+}
+
+// ==================== COST ESTIMATION ====================
+
+model CostCategory {
+  id        String     @id @default(cuid())
+  name      String
+  icon      String?
+  order     Int        @default(0)
+  isActive  Boolean    @default(true)
+  items     CostItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CostItem {
+  id            String      @id @default(cuid())
+  categoryId    String
+  category      CostCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name          String
+  unit          String
+  unitPriceMin  Float
+  unitPriceMax  Float
+  description   String?
+  specs         String?     @default("{}") // JSON
+  isActive     Boolean     @default(true)
+  order         Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  templateItems CostTemplateItem[]
+}
+
+model CostTemplate {
+  id            String            @id @default(cuid())
+  name          String
+  description   String?
+  bedroomCount  Int?
+  style         String?
+  baseArea      Float?
+  isDefault     Boolean           @default(false)
+  items         CostTemplateItem[]
+  estimates     CostEstimate[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model CostTemplateItem {
+  id              String       @id @default(cuid())
+  templateId      String
+  template        CostTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  costItemId      String
+  costItem        CostItem     @relation(fields: [costItemId], references: [id], onDelete: Cascade)
+  quantity        Float
+  quantityFormula String?
+  note            String?
+}
+
+model CostEstimate {
+  id           String        @id @default(cuid())
+  apartmentId  String        @unique
+  apartment    Apartment     @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  templateId   String?
+  template     CostTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  status       String        @default("DRAFT") // DRAFT, SENT, APPROVED, REJECTED, EXPIRED
+  totalMin     Float         @default(0)
+  totalMax     Float         @default(0)
+  breakdown    String        @default("{}") // JSON
+  notes        String?
+  generatedBy  String?
+  generatedAt  DateTime      @default(now())
+  validUntil   DateTime?
+  pdfUrl       String?
+  generator    User?          @relation("EstimateCreator", fields: [generatedBy], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+// ==================== AUTH & ADMIN ====================
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String?
+  passwordHash String?
+  role         String        @default("SALES") // SUPER_ADMIN, ADMIN, MANAGER, DESIGNER, SALES, VIEWER
+  avatar       String?
+  phone        String?
+  zaloId       String?
+  isActive     Boolean       @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  sessions     Session[]
+  estimates    CostEstimate[] @relation("EstimateCreator")
+  activities   ActivityLog[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String
+  oldData   String?  @default("{}")
+  newData   String?  @default("{}")
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+// ==================== ZALO BOT ====================
+
+model ZaloMessage {
+  id          String   @id @default(cuid())
+  messageId   String   @unique
+  userId      String
+  userName    String?
+  userPhone   String?
+  messageType String   // TEXT, IMAGE, VIDEO, FILE, LOCATION, CONTACT, STICKER
+  content     String
+  rawData     String   @default("{}") // JSON
+  processed   Boolean  @default(false)
+  processedAt DateTime?
+  result      String   @default("{}") // JSON
+  error       String?
+  createdAt   DateTime @default(now())
+}
+
+model ZaloSyncLog {
+  id          String   @id @default(cuid())
+  triggerType String   // WEBHOOK, CRON, MANUAL, ZALO_BOT_COMMAND
+  status      String   // PENDING, RUNNING, COMPLETED, FAILED, PARTIAL
+  stats       String   @default("{}") // JSON
+  error       String?
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+}
+
+// ==================== SETTINGS ====================
+
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   @default("")
+  type        String   @default("STRING") // STRING, NUMBER, BOOLEAN, JSON, SECRET
+  group       String   @default("general")
+  label       String   @default("")
+  description String?
+  isPublic    Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+}
