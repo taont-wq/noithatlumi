@@ -42,10 +42,11 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Bootstrap DB on first run, then start server
+# Bootstrap DB tables on first run
 RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'npx prisma db push --accept-data-loss 2>/dev/null' >> /start.sh && \
-    echo 'npx tsx prisma/seed.ts 2>/dev/null' >> /start.sh && \
+    echo 'set -e' >> /start.sh && \
+    echo 'cd /app' >> /start.sh && \
+    echo 'npx prisma db push --accept-data-loss 2>&1 || echo "db: skipped"' >> /start.sh && \
     echo 'exec node server.js' >> /start.sh && \
     chmod +x /start.sh
 
