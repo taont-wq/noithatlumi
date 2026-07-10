@@ -43,7 +43,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Database path - override via Railway env var DATABASE_URL in production
-ENV DATABASE_URL=file:/app/data/prod.db
+ENV DATABASE_URL=file:///app/data/prod.db
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs && \
