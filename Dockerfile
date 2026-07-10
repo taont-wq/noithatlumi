@@ -28,12 +28,13 @@ RUN adduser --system --uid 1001 nextjs
 
 # Install only production deps, including Prisma client
 COPY package.json package-lock.json* ./
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts 2>/dev/null || true
 RUN npm install --omit=dev && npm run prisma:generate
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder /app/prisma ./prisma
 
 USER nextjs
 
