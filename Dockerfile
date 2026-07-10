@@ -19,20 +19,21 @@ RUN npm run build
 # Create bootstrap wrapper for server.js
 # Railway uses "node server.js" as startCommand, so we inject bootstrap into server.js
 RUN mv .next/standalone/server.js .next/standalone/server-original.js && \
-  printf 'const { execSync } = require("child_process");\n' \
-  'process.env.NODE_ENV = "production";\n' \
-  'console.log("--- Starting DB bootstrap ---");\n' \
-  'console.log("DATABASE_URL=" + (process.env.DATABASE_URL || "not set"));\n' \
-  'try {\n' \
-  '  execSync("mkdir -p /app/data 2>/dev/null; npx prisma db push --accept-data-loss", { stdio: "inherit", cwd: "/app" });\n' \
-  '  console.log("DB schema pushed OK");\n' \
-  '  execSync("node prisma/seed.prod.js", { stdio: "inherit", cwd: "/app" });\n' \
-  '  console.log("Seed complete");\n' \
-  '} catch (e) {\n' \
-  '  console.error("Bootstrap warning:", e.message);\n' \
-  '}\n' \
-  'console.log("--- Bootstrap done, starting Next.js ---");\n' \
-  'require("./server-original.js");\n' > .next/standalone/server.js
+  printf '%s\n' \
+  'const { execSync } = require("child_process");' \
+  'process.env.NODE_ENV = "production";' \
+  'console.log("--- Starting DB bootstrap ---");' \
+  'console.log("DATABASE_URL=" + (process.env.DATABASE_URL || "not set"));' \
+  'try {' \
+  '  execSync("mkdir -p /app/data 2>/dev/null; npx prisma db push --accept-data-loss", { stdio: "inherit", cwd: "/app" });' \
+  '  console.log("DB schema pushed OK");' \
+  '  execSync("node prisma/seed.prod.js", { stdio: "inherit", cwd: "/app" });' \
+  '  console.log("Seed complete");' \
+  '} catch (e) {' \
+  '  console.error("Bootstrap warning:", e.message);' \
+  '}' \
+  'console.log("--- Bootstrap done, starting Next.js ---");' \
+  'require("./server-original.js");' > .next/standalone/server.js
 
 # Production image
 FROM base AS runner
