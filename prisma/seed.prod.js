@@ -7,7 +7,7 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaLibSql } = require('@prisma/adapter-libsql');
 const bcrypt = require('bcryptjs');
 
-const url = process.env.DATABASE_URL || 'file:./prisma/prod.db';
+const url = process.env.DATABASE_URL || 'file:./prisma/dev.db';
 const adapter = new PrismaLibSql({ url });
 const prisma = new PrismaClient({ adapter });
 

@@ -24,7 +24,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Database path - override via Railway env var DATABASE_URL in production
-ENV DATABASE_URL=file:///app/data/prod.db
+ENV DATABASE_URL=file:/app/data/prod.db
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -53,8 +53,12 @@ ENV HOSTNAME="0.0.0.0"
 RUN echo '#!/bin/sh' > /start.sh && \
     echo 'set -e' >> /start.sh && \
     echo 'cd /app' >> /start.sh && \
+    echo 'echo "=== DATABASE_URL=[$DATABASE_URL] ==="' >> /start.sh && \
+    echo 'mkdir -p /app/data 2>/dev/null' >> /start.sh && \
     echo 'npx prisma db push --accept-data-loss 2>&1' >> /start.sh && \
+    echo 'echo "=== DB push done, running seed ==="' >> /start.sh && \
     echo 'node prisma/seed.prod.js 2>&1' >> /start.sh && \
+    echo 'echo "=== Seed done, starting server ==="' >> /start.sh && \
     echo 'exec node server.js' >> /start.sh && \
     chmod +x /start.sh
 
