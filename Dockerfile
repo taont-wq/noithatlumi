@@ -49,17 +49,8 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Bootstrap DB tables + seed data on first run
-RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'set -e' >> /start.sh && \
-    echo 'cd /app' >> /start.sh && \
-    echo 'echo "=== DATABASE_URL=[$DATABASE_URL] ==="' >> /start.sh && \
-    echo 'mkdir -p /app/data 2>/dev/null' >> /start.sh && \
-    echo 'npx prisma db push --accept-data-loss 2>&1' >> /start.sh && \
-    echo 'echo "=== DB push done, running seed ==="' >> /start.sh && \
-    echo 'node prisma/seed.prod.js 2>&1' >> /start.sh && \
-    echo 'echo "=== Seed done, starting server ==="' >> /start.sh && \
-    echo 'exec node server.js' >> /start.sh && \
-    chmod +x /start.sh
+# Bootstrap DB + seed on startup, then run server
+# ENTRYPOINT ensures this runs even if Railway overrides CMD
+RUN printf '#!/bin/sh\nset -e\ncd /app\necho "DATABASE_URL=[$DATABASE_URL]"\nmkdir -p /app/data 2>/dev/null || true\nnpx prisma db push --accept-data-loss 2>&1\necho "Seeding..."\nnode prisma/seed.prod.js 2>&1\necho "Starting server..."\nexec node server.js\n' > /start.sh && chmod +x /start.sh
 
-CMD ["/start.sh"]
+ENTRYPOINT ["/start.sh"]
