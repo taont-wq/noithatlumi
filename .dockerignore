@@ -1,0 +1,8 @@
+# .dockerignore — exclude files from Docker build context
+node_modules
+.next
+.git
+.env*
+*.local
+*.log
+dist
