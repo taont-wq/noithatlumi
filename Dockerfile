@@ -16,6 +16,24 @@ COPY . .
 RUN npm run prisma:generate
 RUN npm run build
 
+# Create bootstrap wrapper for server.js
+# Railway uses "node server.js" as startCommand, so we inject bootstrap into server.js
+RUN mv .next/standalone/server.js .next/standalone/server-original.js && \
+  printf 'const { execSync } = require("child_process");\n' \
+  'process.env.NODE_ENV = "production";\n' \
+  'console.log("--- Starting DB bootstrap ---");\n' \
+  'console.log("DATABASE_URL=" + (process.env.DATABASE_URL || "not set"));\n' \
+  'try {\n' \
+  '  execSync("mkdir -p /app/data 2>/dev/null; npx prisma db push --accept-data-loss", { stdio: "inherit", cwd: "/app" });\n' \
+  '  console.log("DB schema pushed OK");\n' \
+  '  execSync("node prisma/seed.prod.js", { stdio: "inherit", cwd: "/app" });\n' \
+  '  console.log("Seed complete");\n' \
+  '} catch (e) {\n' \
+  '  console.error("Bootstrap warning:", e.message);\n' \
+  '}\n' \
+  'console.log("--- Bootstrap done, starting Next.js ---");\n' \
+  'require("./server-original.js");\n' > .next/standalone/server.js
+
 # Production image
 FROM base AS runner
 WORKDIR /app
@@ -26,31 +44,23 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Database path - override via Railway env var DATABASE_URL in production
 ENV DATABASE_URL=file:/app/data/prod.db
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Writable directory for SQLite database
-RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    mkdir -p /app/data && chown nextjs:nodejs /app/data
 
 # Install only production deps, including Prisma client
 COPY package.json package-lock.json* ./
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 RUN npm install --omit=dev && npm run prisma:generate
 
+# Copy app artifacts
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma/seed.prod.js ./prisma/seed.prod.js
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
-
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-
-# Bootstrap DB + seed on startup, then run server
-# ENTRYPOINT ensures this runs even if Railway overrides CMD
-RUN printf '#!/bin/sh\nset -e\ncd /app\necho "DATABASE_URL=[$DATABASE_URL]"\nmkdir -p /app/data 2>/dev/null || true\nnpx prisma db push --accept-data-loss 2>&1\necho "Seeding..."\nnode prisma/seed.prod.js 2>&1\necho "Starting server..."\nexec node server.js\n' > /start.sh && chmod +x /start.sh
-
-ENTRYPOINT ["/start.sh"]
