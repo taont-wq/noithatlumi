@@ -42,4 +42,11 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+# Bootstrap DB on first run, then start server
+RUN echo '#!/bin/sh' > /start.sh && \
+    echo 'npx prisma db push --accept-data-loss 2>/dev/null' >> /start.sh && \
+    echo 'npx tsx prisma/seed.ts 2>/dev/null' >> /start.sh && \
+    echo 'exec node server.js' >> /start.sh && \
+    chmod +x /start.sh
+
+CMD ["/start.sh"]
