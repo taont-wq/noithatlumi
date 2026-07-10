@@ -26,6 +26,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Writable directory for SQLite database
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+
 # Install only production deps, including Prisma client
 COPY package.json package-lock.json* ./
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
