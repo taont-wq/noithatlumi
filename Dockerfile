@@ -31,6 +31,7 @@ COPY package.json package-lock.json* ./
 COPY --from=builder /app/prisma ./prisma
 RUN npm install --omit=dev && npm run prisma:generate
 
+COPY --from=builder /app/prisma/seed.prod.js ./prisma/seed.prod.js
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
@@ -42,11 +43,12 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Bootstrap DB tables on first run
+# Bootstrap DB tables + seed data on first run
 RUN echo '#!/bin/sh' > /start.sh && \
     echo 'set -e' >> /start.sh && \
     echo 'cd /app' >> /start.sh && \
-    echo 'npx prisma db push --accept-data-loss 2>&1 || echo "db: skipped"' >> /start.sh && \
+    echo 'npx prisma db push --accept-data-loss 2>&1' >> /start.sh && \
+    echo 'node prisma/seed.prod.js 2>&1' >> /start.sh && \
     echo 'exec node server.js' >> /start.sh && \
     chmod +x /start.sh
 
